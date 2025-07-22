@@ -593,88 +593,88 @@ const OrdersManagement = () => {
         <div id="receipt-print-area" ref={printRef} style={{ width: '100vw', zIndex: 9999, background: 'white', padding: 0, margin: 0 }}>
           <div
             style={{
-              maxWidth: 220,
-              margin: '0 auto',
-              fontFamily: 'monospace',
-              fontSize: 12,
-              lineHeight: 1.1,
-              padding: 4,
+              maxWidth: 380,
+              margin: '24px auto',
+              fontFamily: 'Segoe UI, Arial, sans-serif',
+              fontSize: 14,
               background: 'white',
+              borderRadius: 12,
+              boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+              padding: 24,
+              color: '#222',
             }}
           >
             {/* Header */}
-            <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 14, lineHeight: 1.1 }}>TAAZA CHIKEN AND MUTTON</div>
-            <div style={{ textAlign: 'center', fontSize: 11, marginBottom: 1, lineHeight: 1.1 }}>PH.NO: 8008469048</div>
-            <div style={{ borderTop: '1px dashed #222', margin: '2px 0' }} />
-            {/* Time, Date, Bill, Type */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, lineHeight: 1.1 }}>
-              <span>TIME:{' '}{new Date(printOrder.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              <span>DATE:{' '}{new Date(printOrder.createdAt).toLocaleDateString('en-GB')}</span>
+            <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 22, letterSpacing: 1, color: '#d32f2f', marginBottom: 4 }}>TAAZA CHICKEN AND MUTTON</div>
+            <div style={{ textAlign: 'center', fontSize: 13, color: '#555', marginBottom: 2 }}>PH.NO: 8008469048</div>
+            <div style={{ textAlign: 'center', fontSize: 12, color: '#888', marginBottom: 10 }}>BILL OF SUPPLY</div>
+            <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '10px 0' }} />
+            {/* Bill Info */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 2 }}>
+              <span><b>Bill No:</b> {printOrder.id.replace('CUS-', 'C/')}</span>
+              <span><b>Date:</b> {new Date(printOrder.createdAt).toLocaleDateString('en-GB')}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 1, lineHeight: 1.1 }}>
-              <span>BILL:{printOrder.id.replace('CUS-', 'C/')}</span>
-              <span>BILL TYPE:RETAIL</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 10 }}>
+              <span><b>Time:</b> {new Date(printOrder.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <span><b>Payment:</b> {printOrder.paymentMethod.toUpperCase()}</span>
             </div>
-            <div style={{ borderTop: '1px dashed #222', margin: '2px 0' }} />
-            {/* Section Title */}
-            <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 12, margin: '2px 0', lineHeight: 1.1 }}>BILL OF SUPPLY</div>
-            <div style={{ borderTop: '1px dashed #222', margin: '2px 0' }} />
-            {/* Table Header */}
-            <div style={{ fontSize: 11, fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', lineHeight: 1.1 }}>
-              <span style={{ width: 80 }}>HSN CODE/ITEM NAME</span>
-              <span style={{ width: 36, textAlign: 'right' }}>MRP</span>
-              <span style={{ width: 36, textAlign: 'right' }}>RATE</span>
-              <span style={{ width: 26, textAlign: 'right' }}>QTY</span>
-              <span style={{ width: 40, textAlign: 'right' }}>TOTAL</span>
-            </div>
-            <div style={{ borderTop: '1px dashed #222', margin: '2px 0' }} />
-            {/* Product Rows */}
-            {printOrder.items.map((p, i) => (
-              <div key={i} style={{ marginBottom: 1 }}>
-                <div style={{ fontSize: 11, display: 'flex', justifyContent: 'flex-start', lineHeight: 1.1 }}>
-                  <span style={{ width: 70, fontWeight: 'bold' }}>{p.name}</span>
-                </div>
-                <div style={{ fontSize: 11, display: 'flex', justifyContent: 'space-between', lineHeight: 1.1 }}>
-                  <span style={{ width: 70 }}></span>
-                  <span style={{ width: 36, textAlign: 'right' }}>{Number(p.pricePerKg || p.price).toFixed(2)}</span>
-                  <span style={{ width: 36, textAlign: 'right' }}>{Number(p.pricePerKg || p.price).toFixed(2)}</span>
-                  <span style={{ width: 26, textAlign: 'right' }}>{p.weight || p.qty || p.quantity}</span>
-                  <span style={{ width: 40, textAlign: 'right' }}>{Number(p.total).toFixed(2)}</span>
-                </div>
+            <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '10px 0' }} />
+            {/* Customer Info (if available) */}
+            {printOrder.customer && (
+              <div style={{ fontSize: 13, marginBottom: 10 }}>
+                <b>Customer:</b> {printOrder.customer}
               </div>
-            ))}
-            <div style={{ borderTop: '1px dashed #222', margin: '2px 0' }} />
-            {/* Total Row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: 12, lineHeight: 1.1 }}>
-              <span>TOTAL</span>
-              <span>{printOrder.total.toFixed(2)}</span>
+            )}
+            {/* Items Table */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12 }}>
+              <thead>
+                <tr style={{ background: '#f5f5f5' }}>
+                  <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 600, fontSize: 13 }}>Item</th>
+                  <th style={{ textAlign: 'center', padding: '6px 4px', fontWeight: 600, fontSize: 13 }}>Qty</th>
+                  <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: 600, fontSize: 13 }}>Rate</th>
+                  <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: 600, fontSize: 13 }}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {printOrder.items.map((p, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: '6px 4px', fontWeight: 500 }}>{p.name}</td>
+                    <td style={{ textAlign: 'center', padding: '6px 4px' }}>{p.qty || p.weight || p.quantity}</td>
+                    <td style={{ textAlign: 'right', padding: '6px 4px' }}>₹{Number(p.pricePerKg || p.price).toFixed(2)}</td>
+                    <td style={{ textAlign: 'right', padding: '6px 4px' }}>₹{Number(p.total).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {/* Totals */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 16, marginBottom: 6 }}>
+              <span>Total</span>
+              <span>₹{printOrder.total.toFixed(2)}</span>
             </div>
-            {/* Items/QTY Row */}
-            <div style={{ fontSize: 11, display: 'flex', justifyContent: 'space-between', marginBottom: 1, lineHeight: 1.1 }}>
-              <span>ITEM(S)/QTY</span>
-              <span>{printOrder.items.length}/
-                {printOrder.items.reduce((sum, p) => sum + Number(p.weight || p.qty || p.quantity), 0)}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 2 }}>
+              <span>Items</span>
+              <span>{printOrder.items.length}</span>
             </div>
-            <div style={{ borderTop: '1px dashed #222', margin: '2px 0' }} />
-            {/* Tendered, Cash, Redeem Points */}
-            <div style={{ fontSize: 11, display: 'flex', justifyContent: 'space-between', lineHeight: 1.1 }}>
-              <span>TENDERED</span>
-              <span>{printOrder.total.toFixed(2)}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 10 }}>
+              <span>Qty Total</span>
+              <span>{printOrder.items.reduce((sum, p) => sum + Number(p.weight || p.qty || p.quantity), 0)}</span>
             </div>
-            <div style={{ fontSize: 11, display: 'flex', justifyContent: 'space-between', lineHeight: 1.1 }}>
-              <span>{printOrder.paymentMethod.toUpperCase()}</span>
-              <span>{printOrder.total.toFixed(2)}</span>
+            <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '10px 0' }} />
+            {/* Thank You Note */}
+            <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 15, color: '#388e3c', marginTop: 10 }}>
+              Thank you for shopping with us!
             </div>
-            <div style={{ fontSize: 11, display: 'flex', justifyContent: 'space-between', marginBottom: 1, lineHeight: 1.1 }}>
-              <span>REDEEM POINTS(OPTS)</span>
-              <span>0.00</span>
-            </div>
-            <div style={{ borderTop: '1px dashed #222', margin: '2px 0' }} />
-            {/* Footer */}
-            <div style={{ textAlign: 'center', marginTop: 4, fontSize: 11, lineHeight: 1.1 }}>
-              THANK YOU.....VIST AGAIN
+            <div style={{ textAlign: 'center', fontSize: 12, color: '#888', marginTop: 2 }}>
+              Please visit again
             </div>
           </div>
+          <style>{`
+            @media print {
+              body, html { margin: 0 !important; padding: 0 !important; }
+              #receipt-print-area { margin: 0 !important; padding: 0 !important; }
+              @page { margin: 0; }
+            }
+          `}</style>
         </div>
       )}
     </div>

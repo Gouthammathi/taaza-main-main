@@ -1,108 +1,211 @@
-import React, { useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../config/firebase';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
-// Helper to sum fields in an array
-const sum = (arr, field) => arr.reduce((acc, item) => acc + (Number(item[field]) || 0), 0);
+const STOCK_ITEMS = [
+  { key: 'birds', label: 'Birds' },
+  { key: 'goats', label: 'Goats' },
+  { key: 'white-eggs', label: 'White Eggs' },
+  { key: 'country-eggs', label: 'Brown Eggs' },
+];
+const SALES_ITEMS = [
+  { key: 'chicken', label: 'Chicken (kg)' },
+  { key: 'mutton', label: 'Mutton (kg)' },
+  { key: 'w-eggs', label: 'White Eggs' },
+  { key: 'c-eggs', label: 'Brown Eggs' },
+];
 
-const Analytics = () => {
-  const [orders, setOrders] = useState([]);
-  const [stock, setStock] = useState({ birds: 0, eggs: 0, goats: 0 });
-  const [sales, setSales] = useState({ birds: 0, eggs: 0, goats: 0 });
-  const [cash, setCash] = useState(0);
-  const [payment, setPayment] = useState(0);
-  const [shopExp, setShopExp] = useState(0);
-  const [lessPayments, setLessPayments] = useState(0);
-  const [onlinePay, setOnlinePay] = useState(0);
-  const [credits, setCredits] = useState(0);
-  const [damages, setDamages] = useState(0);
-  const [self, setSelf] = useState(0);
-  const [cStock, setCStock] = useState(0);
-  const [fStock, setFStock] = useState(0);
-  const [change, setChange] = useState(0);
-  const [mutton, setMutton] = useState(0);
-  const [maggi, setMaggi] = useState(0);
-  const [gross, setGross] = useState(0);
-  const [totalSale, setTotalSale] = useState(0);
-  const [todaySale, setTodaySale] = useState(0);
-  const [yesterdaySale, setYesterdaySale] = useState(0);
-  const [avg, setAvg] = useState(0);
+function Analytics() {
+  // State for In Stock section
+  const [stock, setStock] = useState({
+    birds: { incoming: '', wastage: '' },
+    goats: { incoming: '', wastage: '' },
+    'white-eggs': { incoming: '', wastage: '' },
+    'country-eggs': { incoming: '', wastage: '' },
+  });
+  const [available, setAvailable] = useState({
+    birds: 0,
+    goats: 0,
+    'white-eggs': 0,
+    'country-eggs': 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  // Placeholder: Fetch orders and calculate analytics
+  // State for Sales section
+  const [sales, setSales] = useState({
+    chicken: '',
+    mutton: '',
+    'w-eggs': '',
+    'c-eggs': '',
+  });
+  const [salesAvailable, setSalesAvailable] = useState({
+    chicken: 0,
+    mutton: 0,
+    'w-eggs': 0,
+    'c-eggs': 0,
+  });
+  const [salesSaving, setSalesSaving] = useState(false);
+
+  // Fetch available stock from Firestore
   useEffect(() => {
-    const fetchOrders = async () => {
-      // Fetch orders from Firestore
-      const snapshot = await getDocs(collection(db, 'orders'));
-      const data = snapshot.docs.map(doc => doc.data());
-      setOrders(data);
-      // Example calculations (replace with real logic as needed)
-      setTotalSale(sum(data, 'total'));
-      setGross(sum(data, 'total'));
-      setTodaySale(sum(data.filter(o => new Date(o.createdAt).toDateString() === new Date().toDateString()), 'total'));
-      setYesterdaySale(sum(data.filter(o => new Date(o.createdAt).toDateString() === new Date(Date.now() - 86400000).toDateString()), 'total'));
-      setAvg(data.length ? sum(data, 'total') / data.length : 0);
-      // Example: set stock and sales for birds, eggs, goats
-      setStock({ birds: 64, eggs: 4123, goats: 0 });
-      setSales({ birds: 54, eggs: 1032, goats: 0 });
-      setCash(19100);
-      setPayment(4000);
-      setShopExp(1550);
-      setLessPayments(280);
-      setOnlinePay(0);
-      setCredits(0);
-      setDamages(390);
-      setSelf(70);
-      setCStock(1000);
-      setFStock(900);
-      setChange(17800);
-      setMutton(7800);
-      setMaggi(50);
-    };
-    fetchOrders();
+    const unsubscribes = STOCK_ITEMS.map(item =>
+      onSnapshot(doc(db, 'stock', item.key), (docSnap) => {
+        setAvailable(prev => ({
+          ...prev,
+          [item.key]: docSnap.exists() ? (docSnap.data().available || 0) : 0,
+        }));
+      })
+    );
+    setLoading(false);
+    return () => unsubscribes.forEach(unsub => unsub());
   }, []);
 
+  // Fetch available sales from Firestore
+  useEffect(() => {
+    const unsubscribes = SALES_ITEMS.map(item =>
+      onSnapshot(doc(db, 'sales', item.key), (docSnap) => {
+        setSalesAvailable(prev => ({
+          ...prev,
+          [item.key]: docSnap.exists() ? (docSnap.data().value || 0) : 0,
+        }));
+      })
+    );
+    return () => unsubscribes.forEach(unsub => unsub());
+  }, []);
+
+  // Handler for input changes
+  const handleStockChange = (type, field, value) => {
+    setStock((prev) => ({
+      ...prev,
+      [type]: {
+        ...prev[type],
+        [field]: value,
+      },
+    }));
+  };
+  const handleSalesChange = (type, value) => {
+    setSales((prev) => ({
+      ...prev,
+      [type]: value,
+    }));
+  };
+
+  // Save handler for stock
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      for (const item of STOCK_ITEMS) {
+        const key = item.key;
+        const docRef = doc(db, 'stock', key);
+        const docSnap = await getDoc(docRef);
+        const prevAvailable = docSnap.exists() ? (docSnap.data().available || 0) : 0;
+        const incoming = Number(stock[key].incoming) || 0;
+        const wastage = Number(stock[key].wastage) || 0;
+        // Calculate new available stock
+        let newAvailable = prevAvailable + incoming - wastage;
+        if (newAvailable < 0) newAvailable = 0;
+        await setDoc(docRef, { available: newAvailable }, { merge: true });
+      }
+      // Clear input fields after save
+      setStock({
+        birds: { incoming: '', wastage: '' },
+        goats: { incoming: '', wastage: '' },
+        'white-eggs': { incoming: '', wastage: '' },
+        'country-eggs': { incoming: '', wastage: '' },
+      });
+    } catch (err) {
+      alert('Failed to save stock.');
+    }
+    setSaving(false);
+  };
+
+  // Save handler for sales
+  const handleSalesSave = async () => {
+    setSalesSaving(true);
+    try {
+      for (const item of SALES_ITEMS) {
+        const key = item.key;
+        const docRef = doc(db, 'sales', key);
+        const value = Number(sales[key]) || 0;
+        await setDoc(docRef, { value }, { merge: true });
+      }
+      setSales({ chicken: '', mutton: '', 'w-eggs': '', 'c-eggs': '' });
+    } catch (err) {
+      alert('Failed to save sales.');
+    }
+    setSalesSaving(false);
+  };
+
   return (
-    <div className="max-w-3xl mx-auto p-6 bg-white rounded-xl shadow mt-8">
-      <h2 className="text-2xl font-bold mb-6">Analytics Dashboard</h2>
-      <div className="grid grid-cols-2 gap-6 mb-8">
-        <div>
-          <h3 className="font-semibold mb-2">Sales & Summary</h3>
-          <div>Yesterday's Sale: <b>{yesterdaySale}</b></div>
-          <div>Today's Sale: <b>{todaySale}</b></div>
-          <div>Total Sale: <b>{totalSale}</b></div>
-          <div>Gross: <b>{gross}</b></div>
-          <div>Average Sale: <b>{avg.toFixed(2)}</b></div>
+    <div className="max-w-3xl mx-auto p-6 space-y-10">
+      {/* In Stock Section */}
+      <section className="bg-white rounded-xl shadow p-6 mb-8">
+        <h2 className="text-xl font-bold mb-4 text-gray-800">In Stock</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {STOCK_ITEMS.map(item => (
+            <div className="space-y-2" key={item.key}>
+              <h3 className="font-semibold text-gray-700">{item.label}</h3>
+              <div className="mb-1 text-sm text-blue-700 font-semibold">
+                Available Stock: {loading ? '...' : available[item.key]}
+              </div>
+              <label className="block text-sm text-gray-600">Incoming Stock</label>
+              <input
+                type="number"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                value={stock[item.key]?.incoming || ''}
+                onChange={e => handleStockChange(item.key, 'incoming', e.target.value)}
+                placeholder="Enter incoming stock"
+              />
+              <label className="block text-sm text-gray-600 mt-2">Wastage</label>
+              <input
+                type="number"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                value={stock[item.key]?.wastage || ''}
+                onChange={e => handleStockChange(item.key, 'wastage', e.target.value)}
+                placeholder="Enter wastage"
+              />
+            </div>
+          ))}
         </div>
-        <div>
-          <h3 className="font-semibold mb-2">Stock & Sale</h3>
-          <div>Birds: Stock <b>{stock.birds}</b> / Sale <b>{sales.birds}</b></div>
-          <div>Eggs: Stock <b>{stock.eggs}</b> / Sale <b>{sales.eggs}</b></div>
-          <div>Goats: Stock <b>{stock.goats}</b> / Sale <b>{sales.goats}</b></div>
+        <button
+          className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? 'Saving...' : 'Save'}
+        </button>
+      </section>
+      {/* Sales Section */}
+      <section className="bg-white rounded-xl shadow p-6">
+        <h2 className="text-xl font-bold mb-4 text-gray-800">Sales</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {SALES_ITEMS.map(item => (
+            <div className="space-y-2" key={item.key}>
+              <h3 className="font-semibold text-gray-700">{item.label}</h3>
+              <div className="mb-1 text-sm text-blue-700 font-semibold">
+                Current Value: {salesAvailable[item.key]}
+              </div>
+              <input
+                type="number"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                value={sales[item.key] || ''}
+                onChange={e => handleSalesChange(item.key, e.target.value)}
+                placeholder={`Enter ${item.label.toLowerCase()}`}
+              />
+            </div>
+          ))}
         </div>
-      </div>
-      <div className="grid grid-cols-2 gap-6 mb-8">
-        <div>
-          <h3 className="font-semibold mb-2">Cash & Payments</h3>
-          <div>Cash: <b>{cash}</b></div>
-          <div>Payment: <b>{payment}</b></div>
-          <div>Shop Expenses: <b>{shopExp}</b></div>
-          <div>Less Payments: <b>{lessPayments}</b></div>
-          <div>Online Payment: <b>{onlinePay}</b></div>
-          <div>Credits: <b>{credits}</b></div>
-          <div>Damages: <b>{damages}</b></div>
-          <div>Self: <b>{self}</b></div>
-        </div>
-        <div>
-          <h3 className="font-semibold mb-2">Other</h3>
-          <div>C-Stock: <b>{cStock}</b></div>
-          <div>F-Stock: <b>{fStock}</b></div>
-          <div>Change: <b>{change}</b></div>
-          <div>Mutton: <b>{mutton}</b></div>
-          <div>Maggi: <b>{maggi}</b></div>
-        </div>
-      </div>
+        <button
+          className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
+          onClick={handleSalesSave}
+          disabled={salesSaving}
+        >
+          {salesSaving ? 'Saving...' : 'Save'}
+        </button>
+      </section>
     </div>
   );
-};
+}
 
 export default Analytics;
