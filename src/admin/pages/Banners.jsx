@@ -71,8 +71,8 @@ const Banners = () => {
       setBanners(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (err) {
       alert('Failed to upload banner');
-    }
-    setUploading(false);
+    } 
+    setUploading(false);  
   };
 
   const handleDelete = async (id) => {
